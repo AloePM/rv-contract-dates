@@ -7,8 +7,7 @@ const https = require('https');
 const CSV_DATA = require('./csv-data');
 
 // ── Rentvine credentials ────────────────────────────────────────────────────
-const RV_AUTH = process.env.RV_AUTH ||
-  'Basic ODhkMjJjOGM5NmJlNDYyMWJjMGI3YWRlZGIzZWY3NmQ6MDUzMjFmOGNlMDkwNGVlNGFiNGQ3YzJhODMyYjZkMmU=';
+const RV_AUTH = process.env.RV_AUTH || 'Basic ODhkMjJjOGM5NmJlNDYyMWJjMGI3YWRlZGIzZWY3NmQ6MDUzMjFmOGNlMDkwNGVlNGFiNGQ3YzJhODMyYjZkMmU=';
 const RV_BASE = 'https://aloepm.rentvine.com/api/manager';
 const RV_ACCT = 'aloepm';
 
