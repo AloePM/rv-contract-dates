@@ -23,12 +23,23 @@ function normalize(addr) {
   return addr.toUpperCase()
     .replace(/\bNORTH\b/g, 'N').replace(/\bSOUTH\b/g, 'S')
     .replace(/\bEAST\b/g,  'E').replace(/\bWEST\b/g,  'W')
-    .replace(/\bAVENUE\b/g, 'AVE').replace(/\bAVE\b/g, 'AVE')
+    .replace(/\bAVENUE\b/g, 'AVE').replace(/\bAVE\./g, 'AVE')
     .replace(/\bSTREET\b/g, 'ST').replace(/\bDRIVE\b/g, 'DR')
     .replace(/\bLANE\b/g,   'LN').replace(/\bROAD\b/g,  'RD')
     .replace(/\bBOULEVARD\b/g, 'BLVD').replace(/\bCOURT\b/g, 'CT')
     .replace(/\bPLACE\b/g, 'PL').replace(/\bTRAIL\b/g, 'TRL')
+    .replace(/\bWAY\b/g, 'WAY').replace(/\bCIRCLE\b/g, 'CIR')
     .replace(/\s+/g, ' ').trim();
+}
+
+// Strip city, state, zip from end of address
+// e.g. "18840 North Leland Road Maricopa, AZ 85138" → "18840 North Leland Road"
+function stripCityStateZip(addr) {
+  // Remove ", AZ XXXXX" or "City, AZ XXXXX" suffix
+  return addr
+    .replace(/,?\s+[A-Z\s]+,\s+AZ\s+\d{5}(-\d{4})?$/i, '')
+    .replace(/,?\s+AZ\s+\d{5}(-\d{4})?$/i, '')
+    .trim();
 }
 
 function streetNum(addr) {
@@ -37,11 +48,13 @@ function streetNum(addr) {
 }
 
 // ── Build CSV lookup ─────────────────────────────────────────────────────────
+// Key on normalized STREET ONLY (no city/state/zip)
 const exactMap = new Map();
 const numIndex  = new Map(); // streetNum → [{norm, date}]
 
 CSV_DATA.forEach(row => {
-  const norm = normalize(row.full_address);
+  const streetOnly = stripCityStateZip(row.full_address);
+  const norm = normalize(streetOnly);
   exactMap.set(norm, row.date);
   const num = streetNum(norm);
   if (num) {
@@ -51,17 +64,32 @@ CSV_DATA.forEach(row => {
 });
 
 function findDate(rvAddress) {
+  // Rentvine returns street only (no city/state) — normalize directly
   const norm = normalize(rvAddress);
+
+  // Exact match
   if (exactMap.has(norm)) return { date: exactMap.get(norm), matchType: 'exact' };
 
-  // Fuzzy: same street number + first 25 chars of street name match
+  // Also try stripping city/state in case Rentvine includes it sometimes
+  const stripped = normalize(stripCityStateZip(rvAddress));
+  if (exactMap.has(stripped)) return { date: exactMap.get(stripped), matchType: 'exact-stripped' };
+
+  // Fuzzy: same street number + first 30 chars of street name match
   const num = streetNum(norm);
   const candidates = numIndex.get(num) || [];
-  const rvStreet = norm.replace(/^\d+\s*/, '').slice(0, 25);
+  const rvStreet = norm.replace(/^\d+\s*/, '').slice(0, 30);
   for (const c of candidates) {
-    const csvStreet = c.norm.replace(/^\d+\s*/, '').slice(0, 25);
+    const csvStreet = c.norm.replace(/^\d+\s*/, '').slice(0, 30);
     if (rvStreet === csvStreet) return { date: c.date, matchType: 'fuzzy' };
   }
+
+  // Fuzzy fallback: street number + first 15 chars (catches abbreviation differences)
+  const rvStreetShort = norm.replace(/^\d+\s*/, '').slice(0, 15);
+  for (const c of candidates) {
+    const csvStreetShort = c.norm.replace(/^\d+\s*/, '').slice(0, 15);
+    if (rvStreetShort === csvStreetShort) return { date: c.date, matchType: 'fuzzy-short' };
+  }
+
   return null;
 }
 
