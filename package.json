@@ -1,0 +1,12 @@
+{
+  "name": "rv-contract-dates",
+  "version": "1.0.0",
+  "description": "One-time Cloud Run Job — sets dateContractBegins on Rentvine properties from CSV data",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
