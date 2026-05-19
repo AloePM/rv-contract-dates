@@ -32,14 +32,27 @@ function normalize(addr) {
     .replace(/\s+/g, ' ').trim();
 }
 
+// Known AZ cities sorted longest-first so multi-word cities match before single-word
+const AZ_CITIES = [
+  'LITCHFIELD PARK','CAVE CREEK','SAN TAN VALLEY','QUEEN CREEK','APACHE JUNCTION',
+  'ARIZONA CITY','SUN CITY WEST','SUN CITY','SUN LAKES','EL MIRAGE','NEW RIVER',
+  'FOUNTAIN HILLS','CASA GRANDE','MARICOPA','SCOTTSDALE','CHANDLER','GILBERT',
+  'MESA','PHOENIX','GLENDALE','PEORIA','SURPRISE','GOODYEAR','TEMPE','AVONDALE',
+  'BUCKEYE','YOUNGTOWN','LAVEEN','SEDONA','TUCSON','TOLLESON'
+].sort((a,b) => b.length - a.length);
+
 // Strip city, state, zip from end of address
-// e.g. "18840 North Leland Road Maricopa, AZ 85138" → "18840 North Leland Road"
+// "18840 North Leland Road Maricopa, AZ 85138" → "18840 North Leland Road"
 function stripCityStateZip(addr) {
-  // Remove ", AZ XXXXX" or "City, AZ XXXXX" suffix
-  return addr
-    .replace(/,?\s+[A-Z\s]+,\s+AZ\s+\d{5}(-\d{4})?$/i, '')
-    .replace(/,?\s+AZ\s+\d{5}(-\d{4})?$/i, '')
-    .trim();
+  let result = addr.replace(/,\s*AZ\s+\d{5}(-\d{4})?\s*$/i, '').trim().replace(/,\s*$/, '').trim();
+  const upper = result.toUpperCase();
+  for (const city of AZ_CITIES) {
+    if (upper.endsWith(city)) {
+      result = result.slice(0, result.length - city.length).trim().replace(/,\s*$/, '').trim();
+      break;
+    }
+  }
+  return result;
 }
 
 function streetNum(addr) {
